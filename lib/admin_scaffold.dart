@@ -117,25 +117,25 @@ class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProvider
                       onTap: () => widget.onNavigate('/admin/profile'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const CircleAvatar(
+                            CircleAvatar(
                               radius: 18,
                               backgroundImage: AssetImage('assets/profile_placeholder.png'),
                               backgroundColor: Colors.grey,
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
+                                children: [
                                   Text('Admin User', style: TextStyle(fontWeight: FontWeight.w600)),
                                   SizedBox(height: 2),
                                   Text('admin@valenzuela.gov.ph', style: TextStyle(fontSize: 12, color: Colors.black54)),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.chevron_right, size: 20, color: Colors.black45),
+                            Icon(Icons.chevron_right, size: 20, color: Colors.black45),
                           ],
                         ),
                       ),

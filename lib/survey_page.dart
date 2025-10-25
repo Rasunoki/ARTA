@@ -9,9 +9,9 @@ class SurveyPage extends StatelessWidget {
     return AdminScaffold(
       selectedRoute: '/admin/survey',
       onNavigate: (route) => Navigator.of(context).pushReplacementNamed(route),
-      child: Card(
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-        child: const Padding(
+      child: const Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        child: Padding(
           padding: EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -22,7 +22,7 @@ class SurveyPage extends StatelessWidget {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: null,
-                child: const Text('Submit (disabled)'),
+                child: Text('Submit (disabled)'),
               ),
             ],
           ),

@@ -79,7 +79,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   void _exportCurrentView() async {
     final rows = _filtered;
-    final header = 'Survey ID,Client Type,Region,Service,Date';
+    const header = 'Survey ID,Client Type,Region,Service,Date';
     final csv = StringBuffer()..writeln(header);
     for (final s in rows) {
       csv.writeln('${s.id},${s.clientType},${s.region},${s.service},${s.date.toIso8601String()}');
@@ -125,7 +125,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     children: [
                       _MetricCard(title: 'Total Surveys', value: '${_allSurveys.length}', icon: Icons.list, color: Colors.green),
                       const SizedBox(height: 12),
-                      _MetricCard(title: 'Active Surveys', value: '${_allSurveys.where((s) => s.date.isAfter(DateTime.now().subtract(Duration(days: 30)))).length}', icon: Icons.show_chart, color: Colors.teal),
+                      _MetricCard(title: 'Active Surveys', value: '${_allSurveys.where((s) => s.date.isAfter(DateTime.now().subtract(const Duration(days: 30)))).length}', icon: Icons.show_chart, color: Colors.teal),
                     ],
                   );
                 }
@@ -138,7 +138,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _MetricCard(title: 'Active Surveys', value: '${_allSurveys.where((s) => s.date.isAfter(DateTime.now().subtract(Duration(days: 30)))).length}', icon: Icons.show_chart, color: Colors.teal),
+                      child: _MetricCard(title: 'Active Surveys', value: '${_allSurveys.where((s) => s.date.isAfter(DateTime.now().subtract(const Duration(days: 30)))).length}', icon: Icons.show_chart, color: Colors.teal),
                     ),
                   ],
                 );
