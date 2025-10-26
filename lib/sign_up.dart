@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -12,16 +13,33 @@ class _SignUpPageState extends State<SignUpPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final List<TextEditingController> _codeControllers = List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _codeFocusNodes = List.generate(6, (_) => FocusNode());
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmFocus = FocusNode();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  bool _rememberMe = false;
   bool _isFormValid = false;
   String? _emailError;
   String? _confirmError;
   bool _isSubmitting = false;
+  // verification / resend code state
+  bool _isSendingCode = false;
+  int _countdown = 0;
+  String? _sentCode;
+
+  // department selection
+  final List<String> _departments = [
+    'Choose a Department',
+    '3s Malinta Department',
+    'Planning Department',
+    'Finance Department',
+    'Other',
+  ];
+  String? _selectedDepartment = 'Choose a Department';
+  final _otherDepartmentController = TextEditingController();
+ 
 
   @override
   void initState() {
@@ -29,6 +47,8 @@ class _SignUpPageState extends State<SignUpPage> {
     _emailController.addListener(_validateForm);
     _passwordController.addListener(_validateForm);
     _confirmController.addListener(_validateForm);
+    // rebuild when email changes so the inline Get Code / verified icon update immediately
+    _emailController.addListener(() { if (mounted) setState(() {}); });
   }
 
   @override
@@ -36,13 +56,67 @@ class _SignUpPageState extends State<SignUpPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    for (final c in _codeControllers) {
+      c.dispose();
+    }
+    for (final f in _codeFocusNodes) {
+      f.dispose();
+    }
+    _otherDepartmentController.dispose();
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _confirmFocus.dispose();
     super.dispose();
   }
 
+  void _startCountdown() {
+    setState(() {
+      _countdown = 15;
+    });
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() {
+        _countdown--;
+      });
+      return _countdown > 0;
+    });
+  }
+
+  Future<void> _sendCode() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@') || !email.toLowerCase().endsWith('gov.ph')) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid government email')));
+      return;
+    }
+
+    setState(() => _isSendingCode = true);
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
+      _sentCode = code;
+      _startCountdown();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification code sent to $email (Demo: $code)')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to send verification code')));
+    } finally {
+      if (mounted) setState(() => _isSendingCode = false);
+    }
+  }
+
   Future<void> _handleSubmit() async {
+    // verify the 6-digit code matches before submitting
+    final entered = _codeControllers.map((c) => c.text).join();
+    if (_sentCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please request a verification code first')));
+      return;
+    }
+    if (entered != _sentCode) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid verification code')));
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       await Future.delayed(const Duration(seconds: 2));
@@ -264,10 +338,33 @@ class _SignUpPageState extends State<SignUpPage> {
                     hintText: 'Enter email',
                     border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    errorText: _emailError,
-                    suffixIcon: _emailController.text.isNotEmpty && _emailController.text.toLowerCase().endsWith('gov.ph')
-                        ? const Icon(Icons.verified, color: Colors.green, size: 20)
-                        : null,
+                      errorText: _emailError,
+                      // Put verified icon and Get Code together in suffixIcon so it's always visible
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_emailController.text.isNotEmpty && _emailController.text.toLowerCase().endsWith('gov.ph'))
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8.0),
+                              child: Icon(Icons.verified, color: Colors.green, size: 20),
+                            ),
+                          Container(width: 1, height: 20, color: Colors.grey.withAlpha((0.35 * 255).round())),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 80,
+                            child: TextButton(
+                              onPressed: (_isSendingCode || _countdown > 0) ? null : _sendCode,
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                backgroundColor: Colors.transparent,
+                              ),
+                              child: Text(_countdown > 0 ? '${_countdown}s' : 'Get Code', style: const TextStyle(fontSize: 13)),
+                            ),
+                          ),
+                        ],
+                      ),
                   ),
                 ),
                 if (_emailError == null && _emailController.text.isNotEmpty)
@@ -366,21 +463,107 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
                 SizedBox(height: narrow ? 10 : 12),
 
-                // Remember Me
+                // Verification Code (six single-char boxes) with Resend
+                Text('Verification Code', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+                const SizedBox(height: 6),
                 Row(
+                  // left aligned
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: Checkbox(
-                        value: _rememberMe,
-                        onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                      ),
+                    ...List.generate(6, (i) {
+                      return Padding(
+                        padding: EdgeInsets.only(right: i == 5 ? 0.0 : 8.0),
+                        child: SizedBox(
+                          width: narrow ? 34 : 38,
+                          height: narrow ? 44 : 48,
+                          child: TextField(
+                            controller: _codeControllers[i],
+                            focusNode: _codeFocusNodes[i],
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(1),
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            onChanged: (v) {
+                              // Handle paste (multiple chars) and auto-advance
+                              if (v.length > 1) {
+                                final paste = v;
+                                for (var k = 0; k < paste.length && (i + k) < 6; k++) {
+                                  _codeControllers[i + k].text = paste[k];
+                                }
+                                final next = i + paste.length;
+                                if (next < 6) {
+                                  _codeFocusNodes[next].requestFocus();
+                                } else {
+                                  FocusScope.of(context).unfocus();
+                                }
+                                return;
+                              }
+                              if (v.isNotEmpty) {
+                                if (i < 5) {
+                                  _codeFocusNodes[i + 1].requestFocus();
+                                } else {
+                                  FocusScope.of(context).unfocus();
+                                }
+                              } else {
+                                if (i > 0) _codeFocusNodes[i - 1].requestFocus();
+                              }
+                            },
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: (_isSendingCode || _countdown > 0) ? null : _sendCode,
+                      child: Text(_countdown > 0 ? 'Resend Code ${_countdown}s' : 'Resend Code', style: TextStyle(fontSize: 12)),
                     ),
-                    const SizedBox(width: 6),
-                    Text('Remember me', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
                   ],
                 ),
+                SizedBox(height: narrow ? 10 : 12),
+
+                // Department dropdown (when 'Other' selected, replace dropdown with inline input)
+                Text('Department', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+                const SizedBox(height: 6),
+                // render either the dropdown or the inline text field in the same place
+                _selectedDepartment == 'Other'
+                    ? TextField(
+                        controller: _otherDepartmentController,
+                        decoration: const InputDecoration(
+                          hintText: 'Other, please specify',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                        onChanged: (v) {
+                          // keep UI updated while typing
+                          setState(() {});
+                        },
+                      )
+                    : DropdownButtonFormField<String>(
+                        initialValue: _selectedDepartment,
+                        items: _departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                        onChanged: (v) {
+                          setState(() {
+                            _selectedDepartment = v;
+                            if (v == 'Other') {
+                              // clear previous other input and focus the next field
+                              _otherDepartmentController.text = '';
+                              FocusScope.of(context).nextFocus();
+                            }
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                      ),
+
                 SizedBox(height: narrow ? 14 : 16),
 
                 // Sign Up Button

@@ -14,9 +14,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final List<TextEditingController> _codeControllers = List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _codeFocusNodes = List.generate(6, (_) => FocusNode());
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   String? _sentCode;
+  bool _isSendingCode = false;
+  int _countdown = 0;
 
   @override
   void dispose() {
@@ -26,14 +29,44 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     for (final c in _codeControllers) {
       c.dispose();
     }
+    for (final f in _codeFocusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
   void _sendCode() {
-    final email = _emailController.text;
-    final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
-    _sentCode = code;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification code (demo): $code sent to $email')));
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@') || !email.toLowerCase().endsWith('gov.ph')) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid government email')));
+      return;
+    }
+
+    setState(() => _isSendingCode = true);
+    try {
+      final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
+      _sentCode = code;
+      _startCountdown();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification code sent to $email (Demo: $code)')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to send verification code')));
+    } finally {
+      if (mounted) setState(() => _isSendingCode = false);
+    }
+  }
+
+  void _startCountdown() {
+    setState(() {
+      _countdown = 15;
+    });
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() {
+        _countdown--;
+      });
+      return _countdown > 0;
+    });
   }
 
   void _submit() {
@@ -233,7 +266,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         Container(
                           width: 1,
                           height: 20,
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey.withAlpha((0.3 * 255).round()),
                         ),
                         const SizedBox(width: 8),
                         Opacity(
@@ -295,39 +328,64 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 Text('Verification Code', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
                 const SizedBox(height: 6),
                 Row(
+                  // left aligned boxes with resend button at the end
                   mainAxisAlignment: MainAxisAlignment.start,
-                  children: List.generate(6, (i) {
-                    return Padding(
-                      padding: EdgeInsets.only(right: i == 5 ? 0.0 : 8.0),
-                      child: SizedBox(
-                        width: narrow ? 32 : 36,
-                        height: narrow ? 40 : 44,
-                        child: TextField(
-                          controller: _codeControllers[i],
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(1),
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  children: [
+                    ...List.generate(6, (i) {
+                      return Padding(
+                        padding: EdgeInsets.only(right: i == 5 ? 0.0 : 8.0),
+                        child: SizedBox(
+                          width: narrow ? 32 : 36,
+                          height: narrow ? 40 : 44,
+                          child: TextField(
+                            controller: _codeControllers[i],
+                            focusNode: _codeFocusNodes[i],
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(1),
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            onChanged: (v) {
+                              if (v.length > 1) {
+                                final paste = v;
+                                for (var k = 0; k < paste.length && (i + k) < 6; k++) {
+                                  _codeControllers[i + k].text = paste[k];
+                                }
+                                final next = i + paste.length;
+                                if (next < 6) {
+                                  _codeFocusNodes[next].requestFocus();
+                                } else {
+                                  FocusScope.of(context).unfocus();
+                                }
+                                return;
+                              }
+                              if (v.isNotEmpty) {
+                                if (i < 5) {
+                                  _codeFocusNodes[i + 1].requestFocus();
+                                } else {
+                                  FocusScope.of(context).unfocus();
+                                }
+                              } else {
+                                if (i > 0) _codeFocusNodes[i - 1].requestFocus();
+                              }
+                            },
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _sendCode,
-                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
-                    child: const Text("Didn't get code?", style: TextStyle(fontSize: 12)),
-                  ),
+                      );
+                    }),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: (_isSendingCode || _countdown > 0) ? null : _sendCode,
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
+                      child: Text(_countdown > 0 ? 'Resend Code ${_countdown}s' : "Resend Code", style: const TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
 
                 SizedBox(height: narrow ? 12 : 14),
@@ -390,7 +448,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     image: DecorationImage(
                       image: const AssetImage('assets/background.jpeg'),
                       fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken),
+                      colorFilter: ColorFilter.mode(Colors.black.withAlpha(128), BlendMode.darken),
                     ),
                   ),
                 ),

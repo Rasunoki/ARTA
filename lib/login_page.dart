@@ -504,7 +504,7 @@ class _LoginPageState extends State<LoginPage> {
                       height: double.infinity,
                       decoration: BoxDecoration(
                         image: DecorationImage(
-                          image: const AssetImage('assets/background.jpg'),
+                          image: const AssetImage('assets/background.jpeg'),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(Colors.black.withAlpha(128), BlendMode.darken),
                         ),
