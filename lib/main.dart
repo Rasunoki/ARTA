@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
 import 'admin_profile.dart';
 import 'user_management.dart';
@@ -69,6 +70,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: false,
+        // Set Poppins as the default app font. Individual widgets can
+        // still override this (e.g. the left header uses Racing Sans One).
+        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
       ),
       initialRoute: '/',
   onGenerateRoute: (settings) => buildRoute(settings),

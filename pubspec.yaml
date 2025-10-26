@@ -24,6 +24,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/background.jpg
+    - assets/background.jpeg
     - assets/city_logo.png
     - assets/arta_logo.png

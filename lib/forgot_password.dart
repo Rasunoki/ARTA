@@ -31,7 +31,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   void _sendCode() {
     final email = _emailController.text;
-    // Generate a mock 6-digit code and show it in a snackbar (frontend-only)
     final code = (100000 + (DateTime.now().millisecondsSinceEpoch % 900000)).toString();
     _sentCode = code;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification code (demo): $code sent to $email')));
@@ -39,7 +38,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   void _submit() {
     final email = _emailController.text;
-    // Verify code frontend-only
     final entered = _codeControllers.map((c) => c.text).join();
     if (_sentCode == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please request a verification code first')));
@@ -78,14 +76,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         final bool narrow = constraints.maxWidth < 420;
         final logo = Image.asset(
           'assets/arta_logo.png',
-          width: 120,
-          height: 40,
+          width: 100,
+          height: 35,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             return Text(
               'ARTA',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.blue[900],
               ),
@@ -97,18 +95,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           '© Valenzuela City',
           style: TextStyle(
             color: Colors.grey[600],
-            fontSize: 14,
+            fontSize: 12,
           ),
         );
 
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: narrow
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     logo,
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     copyright,
                   ],
                 )
@@ -192,163 +190,175 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             width: narrow ? constraints.maxWidth : constraints.maxWidth * 0.4,
             height: narrow ? screenHeight * 0.7 : double.infinity,
             color: Colors.white,
-            padding: EdgeInsets.all(narrow ? 24 : 40),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  children: [
-                    // Scrollable content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title
-                            Text(
-                              'Forgot Password',
-                              style: GoogleFonts.racingSansOne(
-                                textStyle: TextStyle(
-                                  fontSize: narrow ? 28 : 36,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: narrow ? 24 : 40,
+              vertical: narrow ? 20 : 30,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Center( 
+                  child: Text(
+                  'Forgot Password',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontSize: narrow ? 24 : 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ) ??
+                      const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        
+                      ),
+                
+                ),
+                ),
+                SizedBox(height: narrow ? 12 : 16),
 
-                            // Email + Get Code
-                            Text('Email', style: TextStyle(fontSize: 14, color: Colors.grey[800])),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _emailController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    decoration: const InputDecoration(
-                                      hintText: 'Enter email',
-                                      border: OutlineInputBorder(),
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                TextButton(
-                                  onPressed: _sendCode,
-                                  child: const Text('Get Code'),
-                                ),
-                              ],
+                Text('Email', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Enter email',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 1,
+                          height: 20,
+                          color: Colors.grey.withOpacity(0.3),
+                        ),
+                        const SizedBox(width: 8),
+                        Opacity(
+                          opacity: 1,
+                          child: TextButton(
+                            onPressed: _sendCode,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                            const SizedBox(height: 16),
+                            child: const Text('Get Code', style: TextStyle(fontSize: 13, )),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: narrow ? 10 : 12),
 
-                            // New Password
-                            Text('New Password', style: TextStyle(fontSize: 14, color: Colors.grey[800])),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _newPasswordController,
-                              obscureText: _obscureNewPassword,
-                              decoration: InputDecoration(
-                                hintText: 'Enter password',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: Icon(_obscureNewPassword ? Icons.visibility : Icons.visibility_off),
-                                  onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
+                // New Password
+                Text('New Password', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _newPasswordController,
+                  obscureText: _obscureNewPassword,
+                  decoration: InputDecoration(
+                    hintText: 'Enter password',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureNewPassword ? Icons.visibility : Icons.visibility_off, size: 20),
+                      onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+                    ),
+                  ),
+                ),
+                SizedBox(height: narrow ? 10 : 12),
 
-                            // Confirm Password
-                            Text('Confirm Password', style: TextStyle(fontSize: 14, color: Colors.grey[800])),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _confirmPasswordController,
-                              obscureText: _obscureConfirmPassword,
-                              decoration: InputDecoration(
-                                hintText: 'Re-enter password',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+                // Confirm Password
+                Text('Confirm Password', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    hintText: 'Re-enter password',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off, size: 20),
+                      onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    ),
+                  ),
+                ),
+                SizedBox(height: narrow ? 10 : 12),
 
-                            // Verification Code
-                            Text('Verification Code', style: TextStyle(fontSize: 14, color: Colors.grey[800])),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(6, (i) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: SizedBox(
-                                    width: narrow ? 35 : 40,
-                                    height: narrow ? 44 : 48,
-                                    child: TextField(
-                                      controller: _codeControllers[i],
-                                      textAlign: TextAlign.center,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        LengthLimitingTextInputFormatter(1),
-                                        FilteringTextInputFormatter.digitsOnly
-                                      ],
-                                      decoration: const InputDecoration(
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(onPressed: _sendCode, child: const Text("Didn't get code?")),
-                            ),
-
-                            const SizedBox(height: 20),
-                            // Action button
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: _submit,
-                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
-                                child: const Text('Reset Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Back button
-                            SizedBox(
-                              width: double.infinity,
-                              child: TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('Back to Login'),
-                              ),
-                            ),
-
-                            // Add some space before footer on scroll
-                            const SizedBox(height: 40),
+                // Verification Code
+                Text('Verification Code', style: TextStyle(fontSize: 13, color: Colors.grey[800])),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: List.generate(6, (i) {
+                    return Padding(
+                      padding: EdgeInsets.only(right: i == 5 ? 0.0 : 8.0),
+                      child: SizedBox(
+                        width: narrow ? 32 : 36,
+                        height: narrow ? 40 : 44,
+                        child: TextField(
+                          controller: _codeControllers[i],
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(1),
+                            FilteringTextInputFormatter.digitsOnly
                           ],
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                          ),
                         ),
                       ),
-                    ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _sendCode,
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
+                    child: const Text("Didn't get code?", style: TextStyle(fontSize: 12)),
+                  ),
+                ),
 
-                    // Footer at the bottom
-                    _buildFooter(),
-                  ],
-                );
-              },
+                SizedBox(height: narrow ? 12 : 14),
+                // Reset Password button
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF)),
+                    child: const Text('Reset Password', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                SizedBox(height: narrow ? 10 : 12),
+
+                // Back to Login button
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4)),
+                    child: const Text('Back to Login', style: TextStyle(fontSize: 13)),
+                  ),
+                ),
+
+                const Spacer(),
+                _buildFooter(),
+              ],
             ),
           );
 
           if (narrow) {
-            // Mobile layout: Column layout
             return Stack(
               children: [
                 Container(
@@ -356,29 +366,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   height: double.infinity,
                   decoration: BoxDecoration(
                     image: DecorationImage(
-                      image: const AssetImage('assets/background.jpg'),
+                      image: const AssetImage('assets/background.jpeg'),
                       fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withAlpha(128), BlendMode.darken),
+                      colorFilter: ColorFilter.mode(Colors.black.withAlpha(128), BlendMode.darken),
                     ),
                   ),
                 ),
                 Column(
                   children: [
-                    // Header takes 30% of screen
-                    SizedBox(
-                      height: screenHeight * 0.3,
-                      child: leftHeader,
-                    ),
-                    // Right panel takes remaining 70%
-                    Expanded(
-                      child: rightPanel,
-                    ),
+                    SizedBox(height: screenHeight * 0.3, child: leftHeader),
+                    Expanded(child: rightPanel),
                   ],
                 ),
               ],
             );
           } else {
-            // Desktop layout: Side-by-side
             return Stack(
               children: [
                 Container(
@@ -386,17 +388,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   height: double.infinity,
                   decoration: BoxDecoration(
                     image: DecorationImage(
-                      image: const AssetImage('assets/background.jpg'),
+                      image: const AssetImage('assets/background.jpeg'),
                       fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withAlpha(128), BlendMode.darken),
+                      colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken),
                     ),
                   ),
                 ),
                 leftHeader,
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: rightPanel,
-                ),
+                Align(alignment: Alignment.centerRight, child: rightPanel),
               ],
             );
           }
