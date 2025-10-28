@@ -304,12 +304,12 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        Text(
+                        const Text(
                           'Valenzuela City',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
-                            color: const Color.fromARGB(255, 0, 0, 0),
+                            color: Color.fromARGB(255, 0, 0, 0),
                           ),
                         ),
                       ],

@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
 import 'admin_profile.dart';
 import 'user_management.dart';
-import 'graphs_page.dart';
 import 'analytics_page.dart';
+import 'responses_page.dart';
 import 'survey_page.dart';
 
 void main() {
@@ -40,14 +40,14 @@ class MyApp extends StatelessWidget {
         case '/admin/users':
           page = const UserManagementPage();
           break;
-        case '/admin/graphs':
-          page = const GraphsPage();
+        case '/admin/analytics':
+          page = const AnalyticsPage();
+          break;
+        case '/admin/responses':
+          page = const ResponsesPage();
           break;
         case '/admin/survey':
           page = const SurveyPage();
-          break;
-        case '/admin/analytics':
-          page = const AnalyticsPage();
           break;
         default:
           page = const LoginPage();

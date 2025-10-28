@@ -70,20 +70,20 @@ class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProvider
                 // Navigation Items
                 // Use Bootstrap Icons (CDN SVGs)
                 _SidebarItem(
+                  iconSvg: 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/chat-dots.svg',
+                  icon: Icons.chat_bubble_outline,
+                  label: 'Responses',
+                  route: '/admin/responses',
+                  selected: widget.selectedRoute == '/admin/responses',
+                  collapsed: false,
+                  onTap: widget.onNavigate,
+                ),
+                _SidebarItem(
                   iconSvg: 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/graph-up.svg',
                   icon: Icons.analytics_outlined,
                   label: 'Analytics',
                   route: '/admin/analytics',
                   selected: widget.selectedRoute == '/admin/analytics',
-                  collapsed: false,
-                  onTap: widget.onNavigate,
-                ),
-                _SidebarItem(
-                  iconSvg: 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/bar-chart.svg',
-                  icon: Icons.bar_chart,
-                  label: 'Graphs',
-                  route: '/admin/graphs',
-                  selected: widget.selectedRoute == '/admin/graphs',
                   collapsed: false,
                   onTap: widget.onNavigate,
                 ),
@@ -127,13 +127,13 @@ class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProvider
                             SizedBox(width: 10),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Admin User', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  SizedBox(height: 2),
-                                  Text('admin@valenzuela.gov.ph', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                                ],
-                              ),
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Admin User', style: TextStyle(fontWeight: FontWeight.w600)),
+                                    SizedBox(height: 2),
+                                    Text('admin@valenzuela.gov.ph', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                  ],
+                                ),
                             ),
                             Icon(Icons.chevron_right, size: 20, color: Colors.black45),
                           ],
@@ -183,7 +183,7 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: collapsed ? 6.0 : 12.0, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () => onTap(route),

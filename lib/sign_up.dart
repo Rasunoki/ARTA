@@ -522,7 +522,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     const Spacer(),
                     TextButton(
                       onPressed: (_isSendingCode || _countdown > 0) ? null : _sendCode,
-                      child: Text(_countdown > 0 ? 'Resend Code ${_countdown}s' : 'Resend Code', style: TextStyle(fontSize: 12)),
+                      child: Text(_countdown > 0 ? 'Resend Code ${_countdown}s' : 'Resend Code', style: const TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
