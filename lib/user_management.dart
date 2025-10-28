@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_scaffold.dart';
+import 'src/mock_api.dart';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -9,13 +10,36 @@ class UserManagementPage extends StatefulWidget {
 }
 
 class _UserManagementPageState extends State<UserManagementPage> {
-  final List<Map<String, String>> _users = List.generate(30, (index) => {
-    'id': '00-000${index + 1}',
-    'role': index % 3 == 0 ? 'Admin' : 'User',
-    'email': 'user${index + 1}@gov.ph',
-    'dept': index % 2 == 0 ? 'IT Department' : 'Finance Department',
-    'phone': '+63 912 345 67${index + 10}',
-  });
+  List<Map<String, String>> _users = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await MockApi.instance.fetchUsers();
+      if (!mounted) return;
+      setState(() {
+        _users = data;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
 
   String _query = '';
 
@@ -39,7 +63,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Header with Search
@@ -69,42 +93,46 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 const SizedBox(height: 16),
 
                 // Data Table
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columnSpacing: 20,
-                        dataRowMinHeight: 40,
-                        dataRowMaxHeight: 60,
-                        columns: const [
-                          DataColumn(label: Text('User ID', style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text('User Role', style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text('User Email', style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text('Department', style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text('Phone Number', style: TextStyle(fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text('Access', style: TextStyle(fontWeight: FontWeight.bold))),
-                        ],
-                        rows: rows.map((u) => DataRow(
-                          cells: [
-                            DataCell(Text(u['id']!)),
-                            DataCell(Text(u['role']!)),
-                            DataCell(Text(u['email']!)),
-                            DataCell(Text(u['dept']!)),
-                            DataCell(Text(u['phone']!)),
-                            DataCell(
-                              IconButton(
-                                icon: const Icon(Icons.more_vert, size: 20),
-                                onPressed: () => _showUserActions(context, u['id']!),
-                              ),
-                            ),
-                          ],
-                        )).toList(),
-                      ),
+                    Expanded(
+                      child: _loading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _error != null
+                              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Text('Failed to load users', style: TextStyle(color: Colors.red)), const SizedBox(height: 8), ElevatedButton(onPressed: _loadUsers, child: const Text('Retry'))]))
+                              : SingleChildScrollView(
+                                  scrollDirection: Axis.vertical,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: DataTable(
+                                      columnSpacing: 20,
+                                      dataRowMinHeight: 40,
+                                      dataRowMaxHeight: 60,
+                                      columns: const [
+                                        DataColumn(label: Text('User ID', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        DataColumn(label: Text('User Role', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        DataColumn(label: Text('User Email', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        DataColumn(label: Text('Department', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        DataColumn(label: Text('Phone Number', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        DataColumn(label: Text('Access', style: TextStyle(fontWeight: FontWeight.bold))),
+                                      ],
+                                      rows: rows.map((u) => DataRow(
+                                        cells: [
+                                          DataCell(Text(u['id']!)),
+                                          DataCell(Text(u['role']!)),
+                                          DataCell(Text(u['email']!)),
+                                          DataCell(Text(u['dept']!)),
+                                          DataCell(Text(u['phone']!)),
+                                          DataCell(
+                                            IconButton(
+                                              icon: const Icon(Icons.more_vert, size: 20),
+                                              onPressed: () => _showUserActions(context, u['id']!),
+                                            ),
+                                          ),
+                                        ],
+                                      )).toList(),
+                                    ),
+                                  ),
+                                ),
                     ),
-                  ),
-                ),
               ],
             ),
           ),

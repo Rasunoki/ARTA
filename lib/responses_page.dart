@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'src/download_helper.dart';
+import 'src/mock_api.dart';
 import 'admin_scaffold.dart';
 
 class ResponsesPage extends StatefulWidget {
@@ -11,28 +12,68 @@ class ResponsesPage extends StatefulWidget {
 }
 
 class _ResponsesPageState extends State<ResponsesPage> {
-  // Reused sample data from the analytics page; this is a frontend placeholder.
-  final List<Map<String, String>> _allResponses = List.generate(26, (i) {
-    final regions = ['Karuhatan', 'Mapulang Lupa', 'Gen. T De Leon', 'Lawang Bato', 'Coloong', 'Polo'];
-    return {
-      'id': '00-00${i + 1}',
-      'clientType': i % 3 == 0 ? 'Citizen' : 'Business',
-      'region': regions[i % regions.length],
-      'service': (i % 4 == 0) ? 'Service A' : (i % 4 == 1) ? 'Service B' : (i % 4 == 2) ? 'Service C' : 'Service D',
-      'date': DateTime.utc(2025, 9, 30).add(Duration(days: i)).toIso8601String(),
-    };
-  });
+  List<Map<String, String>> _allResponses = [];
+  bool _loading = true;
+  String? _error;
 
   String _search = '';
   String _sortBy = 'Newest';
   int _currentPage = 0;
-  final int _pageSize = 6;
+  final int _pageSize = 8;
+  // pagination is computed from fetched data
+
+  @override
+  void initState() {
+    super.initState();
+    _loadResponses();
+  }
+
+  Future<void> _loadResponses() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await MockApi.instance.fetchResponses();
+      if (!mounted) return;
+      // Normalize date fields to a display-friendly format (dd-MM-yyyy)
+      final normalized = data.map((m) {
+        final raw = m['date'] ?? '';
+        String dateStr = raw;
+        try {
+          final dt = DateTime.parse(raw);
+          dateStr = '${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year}';
+        } catch (_) {}
+        return {
+          'id': m['id'] ?? '-',
+          'name': m['name'] ?? '-',
+          'clientType': m['clientType'] ?? '-',
+          'region': m['region'] ?? '-',
+          'service': m['service'] ?? '-',
+          // keep original ISO date for parsing in metrics/pagination logic
+          'dateIso': raw,
+          'date': dateStr,
+        };
+      }).toList();
+
+      setState(() {
+        _allResponses = normalized;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
 
   List<Map<String, String>> get _filtered {
     final q = _search.trim().toLowerCase();
     var list = _allResponses.where((s) {
       if (q.isEmpty) return true;
-      return s['id']!.toLowerCase().contains(q) || s['clientType']!.toLowerCase().contains(q) || s['region']!.toLowerCase().contains(q) || s['service']!.toLowerCase().contains(q);
+      return s['id']!.toLowerCase().contains(q) || (s['name'] ?? '').toLowerCase().contains(q) || s['clientType']!.toLowerCase().contains(q) || s['region']!.toLowerCase().contains(q) || s['service']!.toLowerCase().contains(q);
     }).toList();
 
     switch (_sortBy) {
@@ -88,52 +129,42 @@ class _ResponsesPageState extends State<ResponsesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
-    final total = filtered.length;
-    final totalPages = (total / _pageSize).ceil().clamp(1, 9999);
-    final start = (_currentPage * _pageSize) + 1;
-    final end = ((_currentPage + 1) * _pageSize).clamp(0, total);
-    final pageItems = filtered.skip(_currentPage * _pageSize).take(_pageSize).toList();
+  final filtered = _filtered;
+  final totalFiltered = filtered.length;
+  final totalPages = (totalFiltered / _pageSize).ceil().clamp(1, 9999);
+  final start = totalFiltered == 0 ? 0 : (_currentPage * _pageSize) + 1;
+  final end = ((_currentPage + 1) * _pageSize).clamp(0, totalFiltered);
+  final pageItems = filtered.skip(_currentPage * _pageSize).take(_pageSize).toList();
 
     return AdminScaffold(
       selectedRoute: '/admin/responses',
       onNavigate: (route) => Navigator.of(context).pushReplacementNamed(route),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 18),
-              child: LayoutBuilder(builder: (context, constraints) {
-                final narrow = constraints.maxWidth < 700;
-                if (narrow) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: _loading
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 8),
+                  Text('Loading responses...'),
+                ],
+              ),
+            )
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _MetricCard(title: 'Total Responses', value: '${_allResponses.length}', icon: Icons.list, color: Colors.green),
-                      const SizedBox(height: 12),
-                      _MetricCard(title: 'Active Responses', value: '${_allResponses.where((s) => DateTime.parse(s['date']!).isAfter(DateTime.now().subtract(const Duration(days: 30)))).length}', icon: Icons.show_chart, color: Colors.teal),
+                      const Text('Failed to load responses', style: TextStyle(color: Colors.red)),
+                      const SizedBox(height: 8),
+                      ElevatedButton(onPressed: _loadResponses, child: const Text('Retry')),
                     ],
-                  );
-                }
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: _MetricCard(title: 'Total Responses', value: '${_allResponses.length}', icon: Icons.list, color: Colors.green),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _MetricCard(title: 'Active Responses', value: '${_allResponses.where((s) => DateTime.parse(s['date']!).isAfter(DateTime.now().subtract(const Duration(days: 30)))).length}', icon: Icons.show_chart, color: Colors.teal),
-                    ),
-                  ],
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -151,8 +182,8 @@ class _ResponsesPageState extends State<ResponsesPage> {
                       children: [
                         const Expanded(
                           child: Text(
-                            'All Responses',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            'Survey Responses',
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                         ),
                         Flexible(
@@ -164,34 +195,36 @@ class _ResponsesPageState extends State<ResponsesPage> {
                                   child: TextField(
                                     onChanged: _setSearch,
                                     decoration: InputDecoration(
-                                      prefixIcon: const Icon(Icons.search),
-                                      hintText: 'Search (id, type, region, service)',
+                                      prefixIcon: const Icon(Icons.search, color: Color(0xFF9AAED8)),
+                                      hintText: 'Search',
+                                      hintStyle: const TextStyle(color: Color(0xFF9AAED8)),
                                       filled: true,
-                                      fillColor: Colors.grey[100],
+                                      fillColor: const Color(0xFFEFF5FF),
                                       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(20)),
-                                  child: Row(
-                                    children: [
-                                      Text('Sort by : $_sortBy', style: const TextStyle(color: Colors.black54)),
-                                      const SizedBox(width: 6),
-                                      PopupMenuButton<String>(
-                                        icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
-                                        onSelected: _setSort,
-                                        itemBuilder: (ctx) => const [
-                                          PopupMenuItem(value: 'Newest', child: Text('Newest')),
-                                          PopupMenuItem(value: 'Oldest', child: Text('Oldest')),
-                                          PopupMenuItem(value: 'ID Asc', child: Text('ID Asc')),
-                                          PopupMenuItem(value: 'ID Desc', child: Text('ID Desc')),
-                                        ],
-                                      ),
-                                    ],
+                                PopupMenuButton<String>(
+                                  onSelected: _setSort,
+                                  itemBuilder: (ctx) => const [
+                                    PopupMenuItem(value: 'Newest', child: Text('Newest')),
+                                    PopupMenuItem(value: 'Oldest', child: Text('Oldest')),
+                                    PopupMenuItem(value: 'ID Asc', child: Text('ID Asc')),
+                                    PopupMenuItem(value: 'ID Desc', child: Text('ID Desc')),
+                                  ],
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(color: const Color(0xFFEFF5FF), borderRadius: BorderRadius.circular(24)),
+                                    child: Row(
+                                      children: [
+                                        const Text('Sort by : ', style: TextStyle(color: Color(0xFF6F7F9F))),
+                                        Text(_sortBy, style: const TextStyle(color: Color(0xFF2B4776), fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.arrow_drop_down, color: Color(0xFF2B4776)),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -206,42 +239,65 @@ class _ResponsesPageState extends State<ResponsesPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // Table area (centered when it fits, horizontally scrollable when needed)
                           Expanded(
-                            child: SingleChildScrollView(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(minWidth: 600),
-                                  child: DataTable(
-                                    columnSpacing: 32,
-                                    columns: const [
-                                      DataColumn(label: Text('Response ID', style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text('Client Type', style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text('Region of Residence', style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text('Service Applied', style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    ],
-                                    rows: pageItems.map((s) => DataRow(cells: [
-                                      DataCell(Text(s['id']!)),
-                                      DataCell(Text(s['clientType']!)),
-                                      DataCell(Text(s['region']!)),
-                                      DataCell(Text(s['service']!)),
-                                      DataCell(Text(s['date']!.split('T').first)),
-                                    ])).toList(),
+                            child: LayoutBuilder(builder: (context, constraints) {
+                              final viewportWidth = constraints.maxWidth;
+                              return SingleChildScrollView(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: ConstrainedBox(
+                                    // ensure the horizontal scroll child is at least as wide as the viewport
+                                    constraints: BoxConstraints(minWidth: viewportWidth),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: viewportWidth,
+                                        child: DataTable(
+                                          columnSpacing: 24,
+                                          columns: const [
+                                            DataColumn(label: Text('Survey ID', style: TextStyle(fontWeight: FontWeight.bold))),
+                                            DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                                            DataColumn(label: Text('Client Type', style: TextStyle(fontWeight: FontWeight.bold))),
+                                            DataColumn(label: Text('Region of Residence', style: TextStyle(fontWeight: FontWeight.bold))),
+                                            DataColumn(label: Text('Service Applied', style: TextStyle(fontWeight: FontWeight.bold))),
+                                            DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          ],
+                                          rows: pageItems
+                                              .map((s) => DataRow(cells: [
+                                                    DataCell(Text(s['id']!)),
+                                                    DataCell(Text(s['name'] ?? '-')),
+                                                    DataCell(Text(s['clientType']!)),
+                                                    DataCell(Text(s['region']!)),
+                                                    DataCell(Text(s['service']!)),
+                                                    DataCell(Text(s['date']!)),
+                                                  ]))
+                                              .toList(),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            }),
                           ),
-                          const SizedBox(height: 12),
+
+                          const SizedBox(height: 8),
+
+                          // Export button below the table, right-aligned (moved a bit closer)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(onPressed: _exportCurrentView, icon: const Icon(Icons.download_rounded, size: 18), label: const Text('Export Data')),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Footer: showing text and pagination (reflects filtered count)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Showing data $start to $end of $total entries', style: TextStyle(color: Colors.grey[600])),
+                              Text('Showing data $start to $end of $totalFiltered entries', style: TextStyle(color: Colors.grey[500])),
                               Row(
                                 children: [
-                                  IconButton(onPressed: _exportCurrentView, icon: const Icon(Icons.download_rounded)),
-                                  const SizedBox(width: 8),
                                   Row(
                                     children: List.generate(totalPages, (i) {
                                       final isActive = i == _currentPage;
@@ -255,7 +311,7 @@ class _ResponsesPageState extends State<ResponsesPage> {
                                             decoration: BoxDecoration(
                                               color: isActive ? const Color(0xFF007BFF) : Colors.white,
                                               border: Border.all(color: isActive ? Colors.transparent : Colors.grey.shade300),
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius: BorderRadius.circular(18),
                                             ),
                                             child: Center(
                                               child: Text('${i + 1}', style: TextStyle(color: isActive ? Colors.white : Colors.grey[700])),
@@ -292,49 +348,4 @@ class _ResponsesPageState extends State<ResponsesPage> {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _MetricCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withAlpha(26),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 30),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          title,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-}
+// Metrics moved to Analytics page.

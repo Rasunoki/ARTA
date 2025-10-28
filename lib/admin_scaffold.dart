@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'src/mock_api.dart';
+import 'dart:async';
+ import 'dart:typed_data';
+import 'dart:convert';
 
 typedef NavCallback = void Function(String route);
 
@@ -22,10 +26,61 @@ class AdminScaffold extends StatefulWidget {
 class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProviderStateMixin {
   // Sidebar is fixed (non-collapsible)
   static const double _sidebarWidth = 260.0;
+  late final StreamSubscription<Map<String, String>> _profileSub;
+  Uint8List? _avatarBytes;
+  String? _avatarUrl;
 
   @override
   void initState() {
     super.initState();
+    // Load admin profile from mock API (frontend-ready placeholder)
+    _loadProfile();
+    // Listen for live profile updates from MockApi
+    _profileSub = MockApi.instance.profileStream.listen((map) {
+      if (!mounted) return;
+      setState(() {
+        _adminName = map['name'] ?? _adminName;
+        _adminRole = map['role'] ?? _adminRole;
+        if (map.containsKey('imageBase64')) {
+          try {
+            _avatarBytes = base64Decode(map['imageBase64']!);
+            _avatarUrl = null;
+          } catch (_) {
+            _avatarBytes = null;
+          }
+        } else if (map.containsKey('image')) {
+          _avatarUrl = map['image'];
+          _avatarBytes = null;
+        }
+      });
+    }, onError: (_) {});
+  }
+
+  String _adminName = 'Admin User';
+  String _adminRole = 'admin';
+
+  Future<void> _loadProfile() async {
+    try {
+      final map = await MockApi.instance.fetchAdminProfile();
+      if (!mounted) return;
+      setState(() {
+        _adminName = map['name'] ?? _adminName;
+        _adminRole = map['role'] ?? _adminRole;
+        if (map.containsKey('imageBase64')) {
+          try {
+            _avatarBytes = base64Decode(map['imageBase64']!);
+            _avatarUrl = null;
+          } catch (_) {
+            _avatarBytes = null;
+          }
+        } else if (map.containsKey('image')) {
+          _avatarUrl = map['image'];
+          _avatarBytes = null;
+        }
+      });
+    } catch (_) {
+      // ignore — leave defaults
+    }
   }
 
 
@@ -117,27 +172,31 @@ class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProvider
                       onTap: () => widget.onNavigate('/admin/profile'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        child: const Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundImage: AssetImage('assets/profile_placeholder.png'),
-                              backgroundColor: Colors.grey,
-                            ),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Admin User', style: TextStyle(fontWeight: FontWeight.w600)),
-                                    SizedBox(height: 2),
-                                    Text('admin@valenzuela.gov.ph', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                                  ],
-                                ),
-                            ),
-                            Icon(Icons.chevron_right, size: 20, color: Colors.black45),
-                          ],
-                        ),
+                        child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Colors.grey,
+                                backgroundImage: _avatarBytes != null
+                                    ? MemoryImage(_avatarBytes!)
+                                    : (_avatarUrl != null && _avatarUrl!.isNotEmpty
+                                        ? NetworkImage(_avatarUrl!) as ImageProvider
+                                        : const AssetImage('assets/profile_placeholder.png')),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(_adminName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 2),
+                                      Text(_adminRole, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                    ],
+                                  ),
+                              ),
+                              const Icon(Icons.chevron_right, size: 20, color: Colors.black45),
+                            ],
+                          ),
                       ),
                     ),
                   ),
@@ -145,10 +204,16 @@ class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProvider
               ],
             ),
           ),
-          // Main Content
+          // Main Content with background image from assets
           Expanded(
             child: Container(
-              color: const Color(0xFF263238),
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/background.jpeg'),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(Color.fromRGBO(0, 0, 0, 0.45), BlendMode.darken),
+                ),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: widget.child,
@@ -158,6 +223,12 @@ class _AdminScaffoldState extends State<AdminScaffold> with SingleTickerProvider
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _profileSub.cancel();
+    super.dispose();
   }
 }
 
